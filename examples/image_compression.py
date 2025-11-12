@@ -10,7 +10,7 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-from src.core.compressor import OneKBCompressor
+from src.core.chunked_compressor import ChunkedOneKBCompressor
 from src.utils.image_utils import (
     image_to_base64,
     base64_to_image,
@@ -46,28 +46,27 @@ def compress_image_to_1kb(image_path: str, output_image_path: str = None):
     print(f"   Array size in KB: {len(data) * 4 / 1024:.2f} KB")
     print()
     
-    # Step 3: Create 1KB compressor
-    print("🤖 Step 3: Creating 1KB compressor...")
-    compressor = OneKBCompressor(len(data))
-    print(f"   Model size: {compressor.model_size_kb:.2f} KB")
-    print(f"   Target: 1.0 KB")
-    if compressor.model_size_kb <= 1.0:
-        print("   ✅ Model is under 1KB target!")
-    else:
-        print(f"   ⚠️  Model is {compressor.model_size_kb - 1.0:.2f} KB over target")
+    # Step 3: Create chunked 1KB compressor
+    print("🤖 Step 3: Creating chunked 1KB compressor...")
+    print(f"   Data size: {len(data)} characters")
+    print(f"   Will split into chunks of ~20 characters each")
+    compressor = ChunkedOneKBCompressor(chunk_size=20)
     print()
     
-    # Step 4: Train the network
-    print("🎓 Step 4: Training network to memorize image data...")
-    print("   This may take a while...")
+    # Step 4: Train the networks
+    print("🎓 Step 4: Training networks to memorize image data...")
+    print("   This may take a while (training multiple 1KB models)...")
     final_loss = compressor.train(data, epochs=100000)
-    print(f"   Training complete! Final loss: {final_loss:.10f}")
+    print(f"   Training complete! Average loss: {final_loss:.10f}")
+    print(f"   Number of 1KB models: {compressor.get_num_models()}")
+    print(f"   Total model size: {compressor.get_total_model_size_kb():.2f} KB")
+    print(f"   Average model size per chunk: {compressor.get_total_model_size_kb() / compressor.get_num_models():.2f} KB")
     print()
     
     # Step 5: Test compression and decompression
     print("🧪 Step 5: Testing compression and decompression...")
-    compressed = compressor.compress(data)
-    decompressed = compressor.decompress(compressed)
+    compressed_chunks = compressor.compress(data)
+    decompressed = compressor.decompress(compressed_chunks, len(data))
     
     # Step 6: Convert back to base64
     print("🔄 Step 6: Converting back to base64...")
@@ -95,11 +94,14 @@ def compress_image_to_1kb(image_path: str, output_image_path: str = None):
     print("📊 COMPRESSION RESULTS:")
     print("=" * 60)
     original_size_kb = os.path.getsize(image_path) / 1024
-    model_size_kb = compressor.model_size_kb
+    total_model_size_kb = compressor.get_total_model_size_kb()
+    num_models = compressor.get_num_models()
     
     print(f"   Original image size: {original_size_kb:.2f} KB")
-    print(f"   Model size: {model_size_kb:.2f} KB")
-    print(f"   Compression ratio: {original_size_kb / model_size_kb:.1f}x")
+    print(f"   Number of 1KB models: {num_models}")
+    print(f"   Total model size: {total_model_size_kb:.2f} KB")
+    print(f"   Average per model: {total_model_size_kb / num_models:.2f} KB")
+    print(f"   Compression ratio: {original_size_kb / total_model_size_kb:.1f}x")
     print()
     
     # Compare base64 strings
@@ -115,15 +117,18 @@ def compress_image_to_1kb(image_path: str, output_image_path: str = None):
     
     print()
     
-    if compressor.model_size_kb <= 1.0:
-        print("🎉 SUCCESS! Image compressed to 1KB model!")
+    avg_model_size = total_model_size_kb / num_models
+    if avg_model_size <= 1.0:
+        print(f"🎉 SUCCESS! Each model is ~{avg_model_size:.2f} KB (target: 1.0 KB)")
     else:
-        print(f"⚠️  Model size is {compressor.model_size_kb:.2f} KB (target: 1.0 KB)")
+        print(f"⚠️  Average model size is {avg_model_size:.2f} KB (target: 1.0 KB)")
     
     return {
         'original_size_kb': original_size_kb,
-        'model_size_kb': model_size_kb,
-        'compression_ratio': original_size_kb / model_size_kb,
+        'total_model_size_kb': total_model_size_kb,
+        'num_models': num_models,
+        'avg_model_size_kb': total_model_size_kb / num_models,
+        'compression_ratio': original_size_kb / total_model_size_kb,
         'base64_match': base64_match,
         'final_loss': final_loss
     }
