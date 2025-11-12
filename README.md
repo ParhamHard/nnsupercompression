@@ -94,6 +94,9 @@ python examples/perfect_compression.py
 
 # Architecture comparison
 python examples/architecture_experiments.py
+
+# Project structure demo
+python examples/demo_structure.py
 ```
 
 ## 🧪 Testing
@@ -122,8 +125,13 @@ nnsupercompression/
 │   ├── models/            # Neural network architectures
 │   └── utils/             # Utility functions
 ├── examples/               # Example scripts
+│   ├── basic_compression.py
+│   ├── perfect_compression.py
+│   ├── architecture_experiments.py
+│   └── demo_structure.py
 ├── tests/                  # Test suite
-├── docs/                   # Documentation
+├── docs/                   # Additional documentation
+│   └── READMEAGENT.md     # AI agent reference
 ├── setup.py                # Package setup
 ├── pyproject.toml          # Modern Python packaging
 ├── Makefile                # Development commands

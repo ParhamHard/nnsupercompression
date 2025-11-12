@@ -29,7 +29,8 @@ setup(
         "Source": "https://github.com/yourusername/nnsupercompression",
         "Documentation": "https://github.com/yourusername/nnsupercompression#readme",
     },
-    packages=find_packages(),
+    packages=find_packages(where="src"),
+    package_dir={"": "src"},
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",

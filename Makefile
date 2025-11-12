@@ -49,7 +49,10 @@ run-perfect:  ## Run perfect compression example
 run-architectures:  ## Run architecture comparison example
 	python examples/architecture_experiments.py
 
-examples: run-basic run-perfect run-architectures  ## Run all examples
+run-demo:  ## Run structure demo
+	python examples/demo_structure.py
+
+examples: run-basic run-perfect run-architectures run-demo  ## Run all examples
 
 check: lint test  ## Run linting and tests
 

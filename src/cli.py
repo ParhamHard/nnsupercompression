@@ -5,8 +5,6 @@ Command-line interface for Neural Network Supercompression Library.
 
 import argparse
 import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.core.compressor import TinyCompressor, PerfectTinyCompressor
 from src.utils.text_utils import text_to_array, array_to_text, validate_text_reconstruction

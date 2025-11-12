@@ -1,34 +1,38 @@
 #!/usr/bin/env python3
 """
-Demo script showcasing the new project structure.
+Demo script showcasing the project structure.
 
-This script demonstrates how to use the restructured Neural Network
-Supercompression Library with its new modular architecture.
+This script demonstrates how to use the Neural Network
+Supercompression Library with its modular architecture.
 """
 
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
-def demo_new_structure():
-    """Demonstrate the new project structure and capabilities."""
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+from src.core.compressor import TinyCompressor, PerfectTinyCompressor
+from src.models.architectures import get_tiny_architecture, get_perfect_architecture
+from src.utils.text_utils import text_to_array, array_to_text, validate_text_reconstruction
+
+
+def demo_structure():
+    """Demonstrate the project structure and capabilities."""
     
     print("🎯 NEURAL NETWORK SUPERCOMPRESSION LIBRARY")
-    print("   New Professional Structure Demo")
+    print("   Project Structure Demo")
     print("=" * 60)
     print()
     
     try:
-        # Import from the new structure
-        print("📦 Importing from new structure...")
-        from core.compressor import TinyCompressor, PerfectTinyCompressor
-        from models.architectures import get_tiny_architecture, get_perfect_architecture
-        from utils.text_utils import text_to_array, array_to_text, validate_text_reconstruction
+        # Import from the structure
+        print("📦 Importing from project structure...")
         print("✅ All imports successful!")
         print()
         
         # Test text
-        test_text = "Hello from the new structure!"
+        test_text = "Hello from the neural network compressor!"
         print(f"📝 Test text: '{test_text}'")
         print(f"📏 Length: {len(test_text)} characters")
         print()
@@ -88,7 +92,7 @@ def demo_new_structure():
             print("⚠️  Model is over 10KB target")
         
         print()
-        print("🚀 NEW STRUCTURE FEATURES:")
+        print("🚀 PROJECT FEATURES:")
         print("   ✅ Modular design with clear separation of concerns")
         print("   ✅ Comprehensive testing framework")
         print("   ✅ Modern Python packaging")
@@ -96,7 +100,7 @@ def demo_new_structure():
         print("   ✅ Architecture experimentation tools")
         print("   ✅ Professional development workflow")
         print()
-        print("💡 Try running the examples:")
+        print("💡 Try running the other examples:")
         print("   python examples/basic_compression.py")
         print("   python examples/perfect_compression.py")
         print("   python examples/architecture_experiments.py")
@@ -110,20 +114,23 @@ def demo_new_structure():
     except ImportError as e:
         print(f"❌ Import error: {e}")
         print("   Make sure you're running from the project root directory")
-        print("   and the src/ directory is properly set up.")
+        print("   and have installed the package: pip install -e .")
         return False
     except Exception as e:
         print(f"❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
         return False
     
     return True
 
 
 if __name__ == "__main__":
-    success = demo_new_structure()
+    success = demo_structure()
     if success:
         print("\n🎯 Demo completed successfully!")
-        print("   The new project structure is working correctly!")
+        print("   The project structure is working correctly!")
     else:
         print("\n❌ Demo failed. Check the error messages above.")
         sys.exit(1)
+

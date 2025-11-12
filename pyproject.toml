@@ -59,10 +59,8 @@ Repository = "https://github.com/yourusername/nnsupercompression"
 nnsupercompression = "src.cli:main"
 
 [tool.setuptools]
-packages = ["src"]
-
-[tool.setuptools.package-dir]
-"" = "src"
+packages = {find = {}}
+package-dir = {"" = "src"}
 
 [tool.black]
 line-length = 88
