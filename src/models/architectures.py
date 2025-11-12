@@ -148,3 +148,56 @@ def get_ultra_compressed_architecture(input_size: int) -> AutoencoderArchitectur
         learning_rate=0.05,
         activation="sigmoid"
     )
+
+
+def get_1kb_architecture(input_size: int) -> AutoencoderArchitecture:
+    """
+    Get an architecture that targets approximately 1KB model size.
+    
+    For 1KB = 1024 bytes = 256 float32 parameters:
+    We need: 2*N*H + 2*H*B + 2*H + B + N <= 256
+    
+    This function finds the optimal hidden and bottleneck sizes.
+    """
+    target_params = 256  # 1KB / 4 bytes per float32
+    
+    # Try different configurations to find one that fits
+    best_arch = None
+    best_size = float('inf')
+    
+    # Try very small architectures
+    for hidden in [4, 6, 8]:
+        for bottleneck in [1, 2, 3]:
+            # Calculate total parameters
+            params = (input_size * hidden + hidden +  # W1, b1
+                     hidden * bottleneck + bottleneck +  # W2, b2
+                     bottleneck * hidden + hidden +  # W3, b3
+                     hidden * input_size + input_size)  # W4, b4
+            
+            if params <= target_params:
+                arch = AutoencoderArchitecture(
+                    input_size=input_size,
+                    encoder_layers=[hidden],
+                    bottleneck_size=bottleneck,
+                    decoder_layers=[hidden],
+                    learning_rate=0.1,
+                    activation="sigmoid"
+                )
+                size_kb = arch.get_model_size_kb()
+                if size_kb < best_size and size_kb <= 1.0:
+                    best_size = size_kb
+                    best_arch = arch
+    
+    if best_arch is None:
+        # If we can't fit in 1KB, use the smallest possible
+        # This might happen for very large inputs
+        return AutoencoderArchitecture(
+            input_size=input_size,
+            encoder_layers=[4],
+            bottleneck_size=1,
+            decoder_layers=[4],
+            learning_rate=0.1,
+            activation="sigmoid"
+        )
+    
+    return best_arch

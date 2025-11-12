@@ -52,6 +52,9 @@ run-architectures:  ## Run architecture comparison example
 run-demo:  ## Run structure demo
 	python examples/demo_structure.py
 
+run-image:  ## Run image compression example
+	python examples/image_compression.py assets/Morden_army_ensign.png
+
 examples: run-basic run-perfect run-architectures run-demo  ## Run all examples
 
 check: lint test  ## Run linting and tests

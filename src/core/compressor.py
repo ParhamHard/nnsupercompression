@@ -322,3 +322,141 @@ class PerfectTinyCompressor:
         a3 = self.relu(z3)
         output = np.dot(a3, self.W4) + self.b4
         return output
+
+
+class OneKBCompressor:
+    """
+    A specialized compressor that targets 1KB model size.
+    
+    Uses a very small architecture optimized for 1KB target.
+    This is ideal for compressing data where model size is critical.
+    """
+    
+    def __init__(self, data_size: int):
+        """
+        Initialize the 1KB compressor.
+        
+        Args:
+            data_size: Size of input data
+        """
+        self.data_size = data_size
+        
+        # Calculate optimal architecture for 1KB
+        from src.models.architectures import get_1kb_architecture
+        arch = get_1kb_architecture(data_size)
+        
+        self.hidden_size = arch.encoder_layers[0]
+        self.bottleneck_size = arch.bottleneck_size
+        self.learning_rate = arch.learning_rate
+        
+        logger.info(f"Creating OneKBCompressor: Input={data_size}, Hidden={self.hidden_size}, Bottleneck={self.bottleneck_size}")
+        
+        # Initialize weights
+        np.random.seed(42)
+        self.W1 = np.random.randn(data_size, self.hidden_size) * np.sqrt(2.0 / data_size)
+        self.b1 = np.zeros(self.hidden_size)
+        self.W2 = np.random.randn(self.hidden_size, self.bottleneck_size) * np.sqrt(2.0 / self.hidden_size)
+        self.b2 = np.zeros(self.bottleneck_size)
+        self.W3 = np.random.randn(self.bottleneck_size, self.hidden_size) * np.sqrt(2.0 / self.bottleneck_size)
+        self.b3 = np.zeros(self.hidden_size)
+        self.W4 = np.random.randn(self.hidden_size, data_size) * np.sqrt(2.0 / self.hidden_size)
+        self.b4 = np.zeros(data_size)
+        
+        # Calculate model size
+        self.model_size_kb = self._calculate_model_size()
+        logger.info(f"Model size: {self.model_size_kb:.2f} KB (target: 1.0 KB)")
+    
+    def _calculate_model_size(self) -> float:
+        """Calculate model size in KB."""
+        total_params = (self.W1.size + self.b1.size + self.W2.size + 
+                       self.b2.size + self.W3.size + self.b3.size + 
+                       self.W4.size + self.b4.size)
+        return (total_params * 4) / 1024
+    
+    def sigmoid(self, x: np.ndarray) -> np.ndarray:
+        """Sigmoid activation function with clipping."""
+        return 1 / (1 + np.exp(-np.clip(x, -10, 10)))
+    
+    def forward(self, x: np.ndarray) -> np.ndarray:
+        """Forward pass through the network."""
+        h1 = self.sigmoid(np.dot(x, self.W1) + self.b1)
+        bottleneck = self.sigmoid(np.dot(h1, self.W2) + self.b2)
+        h2 = self.sigmoid(np.dot(bottleneck, self.W3) + self.b3)
+        output = self.sigmoid(np.dot(h2, self.W4) + self.b4)
+        return output
+    
+    def train(self, data: np.ndarray, epochs: int = 50000, learning_rate: float = None) -> float:
+        """
+        Train the network to overfit on the data.
+        
+        Args:
+            data: Input data to memorize
+            epochs: Number of training epochs
+            learning_rate: Learning rate (uses architecture default if None)
+            
+        Returns:
+            Final training loss
+        """
+        if learning_rate is None:
+            learning_rate = self.learning_rate
+        
+        logger.info(f"Training for {epochs} epochs with learning rate {learning_rate}")
+        
+        X = data.reshape(1, -1)
+        y = data.reshape(1, -1)
+        
+        for epoch in range(epochs):
+            # Forward pass
+            output = self.forward(X)
+            
+            # Calculate loss
+            loss = np.mean((output - y) ** 2)
+            
+            # Progress updates
+            if epoch % 10000 == 0:
+                logger.info(f"Epoch {epoch}: Loss = {loss:.10f}")
+            
+            # Check for perfect reconstruction
+            if loss < 1e-8:
+                logger.info(f"🎉 Excellent reconstruction at epoch {epoch}!")
+                return loss
+            
+            # Forward pass for gradients
+            h1 = self.sigmoid(np.dot(X, self.W1) + self.b1)
+            bottleneck = self.sigmoid(np.dot(h1, self.W2) + self.b2)
+            h2 = self.sigmoid(np.dot(bottleneck, self.W3) + self.b3)
+            
+            # Backpropagation
+            error = output - y
+            d_output = error
+            
+            # Output layer gradients
+            d_h2 = d_output.dot(self.W4.T) * h2 * (1 - h2)
+            d_bottleneck = d_h2.dot(self.W3.T) * bottleneck * (1 - bottleneck)
+            d_h1 = d_bottleneck.dot(self.W2.T) * h1 * (1 - h1)
+            
+            # Update weights
+            self.W4 -= learning_rate * h2.T.dot(d_output) / X.shape[0]
+            self.b4 -= learning_rate * np.mean(d_output, axis=0)
+            self.W3 -= learning_rate * bottleneck.T.dot(d_h2) / X.shape[0]
+            self.b3 -= learning_rate * np.mean(d_h2, axis=0)
+            self.W2 -= learning_rate * h1.T.dot(d_bottleneck) / X.shape[0]
+            self.b2 -= learning_rate * np.mean(d_bottleneck, axis=0)
+            self.W1 -= learning_rate * X.T.dot(d_h1) / X.shape[0]
+            self.b1 -= learning_rate * np.mean(d_h1, axis=0)
+        
+        logger.info(f"Final loss: {loss:.10f}")
+        return loss
+    
+    def compress(self, data: np.ndarray) -> np.ndarray:
+        """Compress data through encoder."""
+        X = data.reshape(1, -1)
+        h1 = self.sigmoid(np.dot(X, self.W1) + self.b1)
+        bottleneck = self.sigmoid(np.dot(h1, self.W2) + self.b2)
+        return bottleneck
+    
+    def decompress(self, compressed: np.ndarray) -> np.ndarray:
+        """Decompress data through decoder."""
+        h2 = self.sigmoid(np.dot(compressed, self.W3) + self.b3)
+        output = self.sigmoid(np.dot(h2, self.W4) + self.b4)
+        return output
