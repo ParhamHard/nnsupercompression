@@ -95,7 +95,7 @@ class GenerativeCompressor:
     def train(self, target_data: np.ndarray, epochs: int = 100000, 
               learning_rate: float = 0.1, input_val: float = 1.0) -> float:
         """
-        Train the network to generate target_data when given input_val.
+        Train the network to overfit and generate target_data when given input_val.
         
         Args:
             target_data: The data we want the model to generate
@@ -107,14 +107,13 @@ class GenerativeCompressor:
             Final training loss
         """
         logger.info(f"Training to generate {len(target_data)} values from input {input_val}")
-        logger.info(f"Training for {epochs} epochs with learning rate {learning_rate}")
+        logger.info(f"Training for up to {epochs} epochs with learning rate {learning_rate}")
+        logger.info(f"Goal: Perfect overfitting (loss < 1e-10)")
         
         X = np.array([[input_val]])
         y = target_data.reshape(1, -1)
         
         best_loss = float('inf')
-        patience = 10000
-        no_improve = 0
         
         for epoch in range(epochs):
             # Forward pass
@@ -128,44 +127,45 @@ class GenerativeCompressor:
             if epoch % 10000 == 0:
                 logger.info(f"Epoch {epoch}: Loss = {loss:.10f}")
             
-            # Check for perfect reconstruction
+            # Check for perfect reconstruction - this is our goal!
             if loss < 1e-10:
-                logger.info(f"🎉 Perfect generation at epoch {epoch}!")
+                logger.info(f"🎉 PERFECT OVERFITTING achieved at epoch {epoch}!")
+                logger.info(f"   Loss: {loss:.15f}")
                 return loss
             
-            # Early stopping
+            # Track best loss
             if loss < best_loss:
                 best_loss = loss
-                no_improve = 0
-            else:
-                no_improve += 1
             
-            if no_improve >= patience and epoch > 20000:
-                logger.info(f"Early stopping at epoch {epoch}")
-                break
-            
-            # Backpropagation with better gradient calculation
+            # Backpropagation - aggressive training for overfitting
             error = output - y
             
             # Output layer gradients (sigmoid derivative)
             d_output = error * output * (1 - output)
             d_h = d_output.dot(self.W2.T) * h * (1 - h)
             
-            # Gradient clipping
-            d_output = np.clip(d_output, -1, 1)
-            d_h = np.clip(d_h, -1, 1)
+            # Use larger learning rate for output layer to speed up overfitting
+            output_lr = learning_rate * 2.0  # More aggressive for output
+            hidden_lr = learning_rate * 1.0   # Standard for hidden
             
-            # Update weights
-            self.W2 -= learning_rate * h.T.dot(d_output) / X.shape[0]
-            self.b2 -= learning_rate * np.mean(d_output, axis=0)
-            self.W1 -= learning_rate * X.T.dot(d_h) / X.shape[0]
-            self.b1 -= learning_rate * np.mean(d_h, axis=0)
+            # Update weights - no gradient clipping to allow full overfitting
+            self.W2 -= output_lr * h.T.dot(d_output) / X.shape[0]
+            self.b2 -= output_lr * np.mean(d_output, axis=0)
+            self.W1 -= hidden_lr * X.T.dot(d_h) / X.shape[0]
+            self.b1 -= hidden_lr * np.mean(d_h, axis=0)
             
-            # Adaptive learning rate
-            if epoch > 0 and epoch % 20000 == 0:
-                learning_rate *= 0.9
+            # Adaptive learning rate - but don't reduce too much
+            if epoch > 0 and epoch % 50000 == 0 and loss > 1e-6:
+                learning_rate *= 0.95  # Smaller reduction
+                logger.info(f"   Adjusted learning rate to {learning_rate:.6f}")
         
         logger.info(f"Final loss: {loss:.10f}")
+        if loss < 1e-6:
+            logger.info(f"✅ Very good reconstruction achieved!")
+        elif loss < 1e-3:
+            logger.info(f"⚠️  Good reconstruction, but not perfect. Consider more epochs.")
+        else:
+            logger.info(f"⚠️  Loss still high. May need more training or different learning rate.")
         return loss
     
     def generate(self, input_val: float = 1.0) -> np.ndarray:
