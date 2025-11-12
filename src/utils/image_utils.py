@@ -171,19 +171,27 @@ def array_to_base64(arr: np.ndarray, denormalize: bool = True) -> str:
     Returns:
         Base64 string
     """
+    # Valid base64 characters: A-Z (65-90), a-z (97-122), 0-9 (48-57), + (43), / (47), = (61)
+    valid_chars = list(range(43, 58)) + [61] + list(range(65, 91)) + list(range(97, 123))
+    valid_chars = sorted(valid_chars)
+    
     if denormalize:
         # Denormalize from [0, 1] back to ASCII range
         min_val = 43.0
         max_val = 122.0
         arr = arr * (max_val - min_val) + min_val
-        arr = arr.astype(np.int32)
+        arr = arr.astype(np.float32)
     else:
-        arr = arr.astype(np.int32)
+        arr = arr.astype(np.float32)
     
-    # Clip to valid base64 ASCII range (43-122, plus 61 for '=')
-    arr = np.clip(arr, 43, 122)
+    # Round to nearest valid base64 character
+    result = []
+    for val in arr:
+        # Find nearest valid base64 character
+        nearest = min(valid_chars, key=lambda x: abs(x - val))
+        result.append(nearest)
     
     # Convert to string
-    base64_string = ''.join([chr(int(x)) for x in arr])
+    base64_string = ''.join([chr(int(x)) for x in result])
     return base64_string
 

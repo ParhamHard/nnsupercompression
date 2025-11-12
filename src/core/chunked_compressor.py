@@ -64,7 +64,8 @@ class ChunkedOneKBCompressor:
         
         total_loss = 0.0
         for i, chunk in enumerate(chunks):
-            logger.info(f"Training compressor {i+1}/{self.num_chunks}...")
+            if (i + 1) % 100 == 0 or i == 0:
+                logger.info(f"Training compressor {i+1}/{self.num_chunks}...")
             compressor = OneKBCompressor(len(chunk))
             loss = compressor.train(chunk, epochs=epochs)
             self.compressors.append(compressor)
